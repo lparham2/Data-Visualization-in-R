@@ -1,0 +1,105 @@
+---
+title: "TidyTuesday"
+name: "Lilly Parham"
+date: "July 29, 2025"
+format:
+  html:
+    theme: default
+---
+
+```{r}
+library(tidyverse)
+library(ggridges)
+library(viridis)
+```
+
+
+```{r}
+# Using R
+# Option 1: tidytuesdayR R package 
+## install.packages("tidytuesdayR")
+
+tuesdata <- tidytuesdayR::tt_load('2025-07-29')
+## OR
+# tuesdata <- tidytuesdayR::tt_load(2025, week = 30)
+
+movies <- tuesdata$movies
+shows <- tuesdata$shows
+
+# Option 2: Read directly from GitHub
+
+movies <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-07-29/movies.csv')
+shows <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-07-29/shows.csv')
+
+# Peek at structure
+glimpse(movies)
+glimpse(shows)
+```
+
+```{r}
+movies %>%
+  filter(str_detect(title, regex("happy gilmore", ignore_case = TRUE))) %>%
+  select(title, release_date, report, hours_viewed, views, runtime, available_globally)
+```
+
+```{r}
+
+# How many times does the show appear
+show_counts <- shows %>%
+  count(title, name = "appearances")
+shows_seasons <- shows %>%
+  left_join(show_counts, by = "title") %>%
+  mutate(season_type = if_else(appearances == 1, "One-season", "Multi-season"))
+
+# Engagement & Season Type Correlation Analysis
+shows_seasons %>%
+  group_by(season_type) %>%
+  summarise(
+    avg_hours = mean(hours_viewed, na.rm = TRUE),
+    med_hours = median(hours_viewed, na.rm = TRUE),
+    n_shows = n()
+  )
+
+netflixplot <- ggplot(shows_seasons, aes(x = hours_viewed, y = season_type, fill = season_type)) +
+  geom_density_ridges(
+    scale = 0.9,
+    rel_min_height = 0.01,
+    alpha = 0.85,
+    color = NA
+  ) +
+  scale_x_log10(labels = scales::label_comma()) +
+  scale_fill_manual(values = c("One-season" = "#984ea3", "Multi-season" = "#ffae34")) +
+  labs(
+    title = "One Timer vs. Ongoing Series on Netflix",
+    subtitle = "2023–2025 Distribution of Hours Viewed",
+    x = "Hours Viewed (log)",
+    y = NULL,
+    caption = "Data: Netflix Engagement Reports • TidyTuesday 2025-07-29"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 20),
+    plot.subtitle = element_text(face = "italic"),
+    legend.position = "none",
+    axis.text.y = element_text(hjust = 1, face = "bold"),  
+    axis.title.x = element_text(face = "bold", hjust = 0),
+    axis.text.x = element_text(face = "bold"),
+    plot.caption = element_text(hjust = 0))
+```
+
+```{r}
+netflixplot
+```
+
+
+```{r}
+ggsave("netflix_ridgeplot.png", plot = netflixplot, 
+       width = 10, height = 6, dpi = 300)
+
+ggsave("netflix_ridgeplot.jpeg", plot = netflixplot,
+       width = 10, height = 6, dpi = 300)
+
+ggsave("netflix_ridgeplot.svg", plot = netflixplot,
+       width = 10, height = 6)
+```
+
